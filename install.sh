@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+#
+# predatorctl - system installer.
+#
+# Installs the app into a root-owned directory (not user-writable), registers
+# the launcher, the icon, the menu entry (.desktop) and the auth_admin_keep
+# polkit rule (password once per session — NOT passwordless).
+#
+# Usage:  sudo ./install.sh
+#
+set -euo pipefail
+
+APP_DIR="/usr/local/lib/predatorctl"
+BIN="/usr/local/bin/predatorctl"
+DESKTOP="/usr/share/applications/predatorctl.desktop"
+ICON="/usr/share/icons/hicolor/scalable/apps/predatorctl.svg"
+POLKIT="/etc/polkit-1/rules.d/49-predatorctl.rules"
+HELPER="$APP_DIR/helper/predatorctl-helper"
+
+SRC="$(cd "$(dirname "$0")" && pwd)"
+
+if [[ $EUID -ne 0 ]]; then
+    echo "Error: run as root  →  sudo ./install.sh" >&2
+    exit 1
+fi
+
+echo "==> Installing predatorctl into $APP_DIR"
+rm -rf "$APP_DIR"
+install -d -m 755 "$APP_DIR"
+cp -r "$SRC/src" "$APP_DIR/src"
+cp -r "$SRC/helper" "$APP_DIR/helper"
+find "$APP_DIR" -type d -name "__pycache__" -exec rm -rf {} +
+
+# everything root-owned; helper executable (invoked directly via pkexec)
+chown -R root:root "$APP_DIR"
+find "$APP_DIR" -type d -exec chmod 755 {} +
+find "$APP_DIR" -type f -exec chmod 644 {} +
+chmod 755 "$HELPER"
+
+echo "==> Launcher: $BIN"
+cat > "$BIN" <<EOF
+#!/bin/sh
+exec python3 "$APP_DIR/src/main.py" "\$@"
+EOF
+chmod 755 "$BIN"
+
+echo "==> Icon: $ICON"
+install -d -m 755 "$(dirname "$ICON")"
+install -m 644 "$SRC/data/icons/predatorctl.svg" "$ICON"
+
+echo "==> Menu entry: $DESKTOP"
+install -m 644 "$SRC/data/predatorctl.desktop" "$DESKTOP"
+
+echo "==> Polkit rule (auth_admin_keep): $POLKIT"
+install -m 644 "$SRC/data/49-predatorctl.rules" "$POLKIT"
+
+# refresh caches (silent if the tools aren't present)
+gtk-update-icon-cache -q /usr/share/icons/hicolor 2>/dev/null || true
+update-desktop-database /usr/share/applications 2>/dev/null || true
+
+echo
+echo "Done. 'Predator Control' is now in your application menu."
+echo "You'll be asked for your password once per session (auth_admin_keep, ~5 min)."

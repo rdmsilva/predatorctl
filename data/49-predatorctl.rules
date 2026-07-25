@@ -1,0 +1,18 @@
+// predatorctl — polkit rule.
+//
+// NOT passwordless. Uses auth_admin_keep: the user types their password ONCE
+// and the authorization is cached for ~5 min per session (like sudo), expiring
+// on its own and cleared at logout. Preserves the project's philosophy
+// (minimal privilege surface) while avoiding a prompt on every action.
+//
+// Restricted to the INSTALLED helper (root-owned, not user-writable), for
+// active local sessions of admin-group members (wheel on Arch/Fedora,
+// sudo on Debian/Ubuntu).
+polkit.addRule(function(action, subject) {
+    if (action.id == "org.freedesktop.policykit.exec" &&
+        action.lookup("program") == "/usr/local/lib/predatorctl/helper/predatorctl-helper" &&
+        subject.active && subject.local &&
+        (subject.isInGroup("wheel") || subject.isInGroup("sudo"))) {
+        return polkit.Result.AUTH_ADMIN_KEEP;
+    }
+});

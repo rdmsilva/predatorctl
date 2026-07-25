@@ -1,0 +1,112 @@
+#!/usr/bin/python3
+"""
+predatorctl - predatorctl-helper
+Privileged script executed via pkexec.
+Takes arguments on the command line and writes to root-only sysfs.
+
+Usage: pkexec predatorctl-helper <action> <value>
+Ex:    pkexec predatorctl-helper fan_speed 0,0
+       pkexec predatorctl-helper fan_speed 50,70
+       pkexec predatorctl-helper platform_profile performance
+       pkexec predatorctl-helper four_zone_mode 3,4,100,1,255,0,0
+"""
+
+import sys
+import os
+from pathlib import Path
+
+SYSFS_BASE = Path("/sys/module/linuwu_sense/drivers/platform:acer-wmi/acer-wmi")
+PREDATOR_SENSE = SYSFS_BASE / "predator_sense"
+FOUR_ZONED_KB = SYSFS_BASE / "four_zoned_kb"
+PLATFORM_PROFILE = Path("/sys/firmware/acpi/platform_profile")
+
+# Whitelist of allowed actions (one write, one path)
+ACTIONS = {
+    "fan_speed": PREDATOR_SENSE / "fan_speed",
+    "battery_limiter": PREDATOR_SENSE / "battery_limiter",
+    "lcd_override": PREDATOR_SENSE / "lcd_override",
+    "backlight_timeout": PREDATOR_SENSE / "backlight_timeout",
+    "platform_profile": PLATFORM_PROFILE,
+    "rgb": FOUR_ZONED_KB / "per_zone_mode",
+    "four_zone_mode": FOUR_ZONED_KB / "four_zone_mode",
+}
+
+
+def _uint_ok(s, lo, hi):
+    """True if s is a pure ASCII decimal integer within [lo, hi].
+
+    Stricter than int(s): rejects sign, whitespace, underscores ("5_0") and
+    unicode digits — whatever passes here goes byte-for-byte into sysfs.
+    """
+    if not s or not s.isascii() or not s.isdigit():
+        return False
+    return lo <= int(s) <= hi
+
+
+def _hex6_ok(s):
+    """True if s is exactly RRGGBB in ASCII hex."""
+    return len(s) == 6 and all(c in "0123456789abcdefABCDEF" for c in s)
+
+
+def validate(action, value):
+    """Validates the value according to the action."""
+    if action == "fan_speed":
+        parts = value.split(",")
+        return len(parts) == 2 and all(_uint_ok(p, 0, 100) for p in parts)
+
+    elif action in ("battery_limiter", "lcd_override", "backlight_timeout"):
+        return value in ("0", "1")
+
+    elif action == "platform_profile":
+        return value in ("low-power", "quiet", "balanced",
+                         "balanced-performance", "performance")
+
+    elif action == "rgb":
+        # Format: RRGGBB,RRGGBB,RRGGBB,RRGGBB,brightness
+        parts = value.split(",")
+        if len(parts) != 5:
+            return False
+        return all(_hex6_ok(p) for p in parts[:4]) and _uint_ok(parts[4], 0, 100)
+
+    elif action == "four_zone_mode":
+        # Format: mode,speed,brightness,direction,R,G,B
+        parts = value.split(",")
+        if len(parts) != 7:
+            return False
+        bounds = [(0, 7), (0, 9), (0, 100), (0, 2), (0, 255), (0, 255), (0, 255)]
+        return all(_uint_ok(p, lo, hi) for p, (lo, hi) in zip(parts, bounds))
+
+    return False
+
+
+def main():
+    if os.geteuid() != 0:
+        print("ERROR: must run as root", file=sys.stderr)
+        sys.exit(1)
+
+    if len(sys.argv) != 3:
+        print("ERROR: usage: predatorctl-helper <action> <value>", file=sys.stderr)
+        sys.exit(1)
+
+    action = sys.argv[1]
+    value = sys.argv[2]
+
+    if action not in ACTIONS:
+        print(f"ERROR: unknown action '{action}'", file=sys.stderr)
+        sys.exit(1)
+
+    if not validate(action, value):
+        print(f"ERROR: invalid value '{value}' for action '{action}'", file=sys.stderr)
+        sys.exit(1)
+
+    target = ACTIONS[action]
+    try:
+        target.write_text(value)
+        print(f"OK: {action} = {value}")
+    except OSError as e:
+        print(f"ERROR: write failed: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

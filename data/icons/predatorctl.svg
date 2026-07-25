@@ -1,0 +1,22 @@
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#141a22"/>
+      <stop offset="1" stop-color="#0a0d12"/>
+    </linearGradient>
+  </defs>
+  <!-- painel -->
+  <rect x="8" y="8" width="240" height="240" rx="56" fill="url(#bg)" stroke="#273040" stroke-width="2"/>
+  <!-- trilho do mostrador (270°) -->
+  <path d="M 72.9 183.1 A 78 78 0 1 1 183.1 183.1"
+        fill="none" stroke="#273040" stroke-width="18" stroke-linecap="round"/>
+  <!-- arco de valor (~70%) em teal -->
+  <path d="M 72.9 183.1 A 78 78 0 0 1 185.5 71.4"
+        fill="none" stroke="#1ec8b6" stroke-width="18" stroke-linecap="round"/>
+  <!-- garras predador -->
+  <g stroke="#1ec8b6" stroke-width="9" stroke-linecap="round" fill="none">
+    <path d="M 104 150 L 138 108"/>
+    <path d="M 120 156 L 154 114"/>
+    <path d="M 136 160 L 168 120"/>
+  </g>
+</svg>

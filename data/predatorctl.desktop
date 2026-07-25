@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Predator Control
+GenericName=Predator Laptop Control
+Comment=Control Acer Predator laptops — fans, thermal profiles, RGB, battery
+Exec=predatorctl
+Icon=predatorctl
+Terminal=false
+Categories=Settings;HardwareSettings;
+Keywords=predator;acer;nitro;fan;rgb;thermal;turbo;battery;
+StartupNotify=true
