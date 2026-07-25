@@ -42,6 +42,28 @@ As ferramentas existentes para este hardware costumam exigir uma quantidade assu
 - **Nenhuma escalação sem senha.** A regra polkit concede `auth_admin_keep`: você digita a senha uma vez e ela fica em cache por ~5 minutos, como o sudo. A regra só casa com o helper instalado (root-owned).
 - **Nenhum código de kernel próprio.** Ele usa o módulo open-source desenvolvido independentemente [linuwu_sense](https://github.com/0x7375646F/Linuwu-Sense), que você instala por conta própria.
 
+## Compatibilidade
+
+**Hardware** — os controles exigem um notebook suportado pelo [`linuwu_sense`](https://github.com/0x7375646F/Linuwu-Sense#supported-models):
+
+| Notebook | Status |
+|---|---|
+| Predator Helios Neo 16 (PHN16-72) | ✅ Totalmente testado (máquina de desenvolvimento) |
+| Outros Predators suportados pelo linuwu_sense | ✅ Deve funcionar por completo (mesmo sysfs `predator_sense`) |
+| Modelos Nitro suportados pelo linuwu_sense | ⚠️ Temperaturas, perfis térmicos e RGB do teclado devem funcionar; controle de ventoinha e limitador de bateria ficam sob `nitro_sense`, ainda não mapeado (escritas falham de forma limpa) — contribuições bem-vindas |
+| Qualquer outro notebook | 📊 Telemetria somente-leitura (temperaturas via `lm_sensors`/`nvidia-smi`); controles mostram `N/A` e falham de forma limpa |
+
+**Software** — qualquer distribuição Linux com GTK4 + **libadwaita ≥ 1.4**, polkit moderno (`rules.d` em JS) e Python ≥ 3.10:
+
+| Distribuição | Status | Pacotes |
+|---|---|---|
+| Arch / Manjaro | ✅ Testado | `python-gobject gtk4 libadwaita lm_sensors polkit` |
+| Ubuntu 24.04+ / Debian 13+ | ✅ Deve funcionar | `python3-gi gir1.2-gtk-4.0 gir1.2-adw-1 lm-sensors polkitd` |
+| Fedora 39+ | ✅ Deve funcionar | `python3-gobject gtk4 libadwaita lm_sensors polkit` |
+| Ubuntu 22.04 | ❌ | libadwaita 1.1 é antiga demais (o app usa widgets da 1.4) |
+
+O desktop environment não importa (GNOME, KDE Plasma, etc., X11 ou Wayland) — o app traz seu próprio tema escuro "instrument" de qualquer forma.
+
 ## Requisitos
 
 - Um notebook Acer Predator/Nitro suportado pelo [`linuwu_sense`](https://github.com/0x7375646F/Linuwu-Sense), com o módulo carregado (ele substitui o `acer_wmi` da árvore do kernel). Você pode seguir as instruções daquele projeto, ou usar o helper **opcional** incluído aqui, que o configura com DKMS para que atualizações de kernel não o removam silenciosamente:

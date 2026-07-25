@@ -40,6 +40,28 @@ Existing tools for this hardware tend to demand a scary amount of trust: passwor
 - **No passwordless escalation.** The polkit rule grants `auth_admin_keep`: you type your password once and it is cached for ~5 minutes, like sudo. The rule only matches the root-owned installed helper path.
 - **No kernel code of its own.** It drives the independently developed, open-source [linuwu_sense](https://github.com/0x7375646F/Linuwu-Sense) module you install yourself.
 
+## Compatibility
+
+**Hardware** — the controls need a laptop supported by [`linuwu_sense`](https://github.com/0x7375646F/Linuwu-Sense#supported-models):
+
+| Laptop | Status |
+|---|---|
+| Predator Helios Neo 16 (PHN16-72) | ✅ Fully tested (development machine) |
+| Other Predators supported by linuwu_sense | ✅ Expected to work fully (same `predator_sense` sysfs) |
+| Nitro models supported by linuwu_sense | ⚠️ Temperatures, thermal profiles and keyboard RGB expected to work; fan control and battery limiter live under `nitro_sense`, not wired up yet (writes fail cleanly) — contributions welcome |
+| Any other laptop | 📊 Read-only telemetry (temperatures via `lm_sensors`/`nvidia-smi`); controls show `N/A` and fail cleanly |
+
+**Software** — any Linux distribution with GTK4 + **libadwaita ≥ 1.4**, a modern polkit (JS `rules.d`) and Python ≥ 3.10:
+
+| Distribution | Status | Packages |
+|---|---|---|
+| Arch / Manjaro | ✅ Tested | `python-gobject gtk4 libadwaita lm_sensors polkit` |
+| Ubuntu 24.04+ / Debian 13+ | ✅ Should work | `python3-gi gir1.2-gtk-4.0 gir1.2-adw-1 lm-sensors polkitd` |
+| Fedora 39+ | ✅ Should work | `python3-gobject gtk4 libadwaita lm_sensors polkit` |
+| Ubuntu 22.04 | ❌ | libadwaita 1.1 is too old (widgets from 1.4 are used) |
+
+Desktop environment doesn't matter (GNOME, KDE Plasma, etc., X11 or Wayland) — the app ships its own dark "instrument" theme either way.
+
 ## Requirements
 
 - An Acer Predator/Nitro laptop supported by [`linuwu_sense`](https://github.com/0x7375646F/Linuwu-Sense), with the module loaded (it replaces the in-tree `acer_wmi`). You can follow that project's instructions, or use the **optional** helper included here, which sets it up with DKMS so kernel updates don't silently remove it:
