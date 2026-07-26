@@ -104,19 +104,15 @@ The installer copies the app to a root-owned directory (a user-writable root-exe
 sudo ./uninstall.sh    # or: sudo make uninstall
 ```
 
-### Restoring preferences at boot (optional)
+### Restoring preferences at boot
 
-`linuwu_sense` reloads with its own driver defaults on every boot, and predatorctl has no background daemon — so your last thermal profile, RGB effect, and battery limiter are lost until you reopen the app and set them again.
+`linuwu_sense` reloads with its own driver defaults on every boot, and predatorctl has no background daemon — so without this, your last thermal profile, RGB effect, and battery limiter would be lost until you reopened the app and set them again.
 
-`install.sh` also installs and enables a `predatorctl-restore.service` systemd unit that re-applies saved values at boot — but it's harmless out of the box: the unit is gated by `ConditionPathExists=/etc/predatorctl/restore.conf`, so it does nothing until that file exists. It keeps the same privilege boundary as everything else: the unit runs as root (no interactive session exists at boot to prompt for a password, so it can't go through `pkexec`), but it performs no sysfs writes itself — it only reads `/etc/predatorctl/restore.conf` and calls the same whitelisted, validating `predatorctl-helper` the GUI uses.
+`install.sh` installs and enables a `predatorctl-restore.service` systemd unit that re-applies saved values at boot, and there's nothing to configure: every time you change a setting in the app, `predatorctl-helper` mirrors it into `/etc/predatorctl/restore.conf`, so it's already there for the next boot. The unit is gated by `ConditionPathExists=/etc/predatorctl/restore.conf`, so on a fresh install (before you've changed anything) it's a harmless no-op.
 
-```bash
-sudo cp /etc/predatorctl/restore.conf.example /etc/predatorctl/restore.conf
-sudo $EDITOR /etc/predatorctl/restore.conf              # uncomment the values you want
-sudo systemctl restart predatorctl-restore.service      # apply now, or just reboot
-```
+It keeps the same privilege boundary as everything else. The mirrored write happens inside `predatorctl-helper` itself — the value was already whitelisted and validated for the real sysfs write a moment earlier, so writing the same string to a second, fixed path isn't a new injection surface. At boot, the unit runs as root directly (no interactive session exists to prompt for a password, so it can't go through `pkexec`), but `predatorctl-restore` performs no sysfs writes itself — it only reads the config and calls the same helper. `/etc/predatorctl/restore.conf` is root-owned and not user-writable, so it can't be used to smuggle arbitrary writes into either step.
 
-`/etc/predatorctl/restore.conf` is root-owned and not user-writable, so it can't be used to smuggle arbitrary writes into the root-run restore step.
+You normally never touch this file directly; `data/restore.conf.example` documents the format in case you want to add an entry the app doesn't cover.
 
 ## Tests
 

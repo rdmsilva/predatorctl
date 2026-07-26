@@ -58,14 +58,15 @@ install -m 644 "$SRC/data/predatorctl.desktop" "$DESKTOP"
 echo "==> Polkit rule (auth_admin_keep): $POLKIT"
 install -m 644 "$SRC/data/49-predatorctl.rules" "$POLKIT"
 
-echo "==> Boot-time preference restore (enabled, inert until configured): $RESTORE_UNIT"
+echo "==> Boot-time preference restore (enabled, auto-populated as you use the app): $RESTORE_UNIT"
 install -d -m 755 "$RESTORE_ETC"
 install -m 644 "$SRC/data/restore.conf.example" "$RESTORE_ETC/restore.conf.example"
 install -m 644 "$SRC/data/predatorctl-restore.service" "$RESTORE_UNIT"
 systemctl daemon-reload 2>/dev/null || true
 # Safe to enable unconditionally: ConditionPathExists=/etc/predatorctl/restore.conf
-# in the unit makes this a no-op (successful, RemainAfterExit) until that
-# root-only-writable file exists — see CLAUDE.md.
+# in the unit makes this a no-op (successful, RemainAfterExit) until that file
+# exists -- which predatorctl-helper creates itself the first time you change
+# a setting in the app (see _persist() there). No manual config step needed.
 systemctl enable --now predatorctl-restore.service 2>/dev/null || true
 
 # refresh caches (silent if the tools aren't present)
@@ -76,9 +77,8 @@ echo
 echo "Done. 'Predator Control' is now in your application menu."
 echo "You'll be asked for your password once per session (auth_admin_keep, ~5 min)."
 echo
-echo "linuwu_sense reloads with driver defaults on every reboot, so your last"
-echo "profile/RGB/battery-limiter settings are lost until you reopen the app."
-echo "predatorctl-restore.service is enabled but does nothing until you opt in:"
-echo "  sudo cp $RESTORE_ETC/restore.conf.example $RESTORE_ETC/restore.conf"
-echo "  sudo \$EDITOR $RESTORE_ETC/restore.conf"
-echo "  sudo systemctl restart predatorctl-restore.service   # apply now, or just reboot"
+echo "linuwu_sense reloads with driver defaults on every reboot. From now on,"
+echo "every profile/RGB/battery-limiter/fan change you make in the app is"
+echo "automatically saved to $RESTORE_ETC/restore.conf and reapplied at boot"
+echo "-- no extra steps needed. See $RESTORE_ETC/restore.conf.example if you"
+echo "ever want to add or edit an entry by hand."

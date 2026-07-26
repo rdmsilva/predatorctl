@@ -1,15 +1,15 @@
 # predatorctl-restore.service preferences.
 #
-# linuwu_sense reloads with driver defaults on every boot, and predatorctl
-# has no daemon watching for that -- so without this file, whatever thermal
-# profile / RGB effect / battery limiter you last set in the GUI is lost on
-# reboot until you reopen the app and set it again.
+# You normally don't need to touch this file: predatorctl-helper writes
+# /etc/predatorctl/restore.conf itself, automatically, every time you change
+# a setting (thermal profile, RGB effect, battery limiter, fan) in the app --
+# so your last values are already reapplied at the next boot with zero setup.
 #
-# To opt in: copy this file to /etc/predatorctl/restore.conf (root-owned,
-# not user-writable -- install.sh creates the directory but not the file)
-# and uncomment/edit the lines you want, then:
-#
-#   sudo systemctl enable --now predatorctl-restore.service
+# This example is here for the manual case: adding an entry the app doesn't
+# cover, or seeding a value before ever launching the GUI. To use it, copy
+# it to /etc/predatorctl/restore.conf (root-owned, not user-writable) and
+# uncomment/edit the lines you want -- predatorctl-helper will preserve your
+# comments and just update its own lines going forward.
 #
 # One "action=value" pair per line, same action names and value formats as
 # the pkexec helper (see helper/predatorctl-helper ACTIONS/validate(), and

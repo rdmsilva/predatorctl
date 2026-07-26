@@ -106,19 +106,15 @@ O instalador copia o app para um diretório root-owned (um script executado como
 sudo ./uninstall.sh    # ou: sudo make uninstall
 ```
 
-### Restaurando preferências no boot (opcional)
+### Restaurando preferências no boot
 
-O `linuwu_sense` recarrega com os defaults do driver a cada boot, e o predatorctl não tem daemon em segundo plano — então seu último perfil térmico, efeito de RGB e limitador de bateria são perdidos até você reabrir o app e configurar de novo.
+O `linuwu_sense` recarrega com os defaults do driver a cada boot, e o predatorctl não tem daemon em segundo plano — então, sem isso, seu último perfil térmico, efeito de RGB e limitador de bateria seriam perdidos até você reabrir o app e configurar de novo.
 
-O `install.sh` também instala e habilita uma unit systemd `predatorctl-restore.service` que reaplica os valores salvos no boot — mas ela é inofensiva por padrão: a unit é condicionada por `ConditionPathExists=/etc/predatorctl/restore.conf`, então não faz nada até esse arquivo existir. Mantém a mesma fronteira de privilégio de tudo o resto: a unit roda como root (não há sessão interativa no boot para pedir senha, então não dá pra passar por `pkexec`), mas ela mesma não escreve em nenhum sysfs — só lê `/etc/predatorctl/restore.conf` e chama o mesmo `predatorctl-helper` validado e com whitelist que a GUI usa.
+O `install.sh` instala e habilita uma unit systemd `predatorctl-restore.service` que reaplica os valores salvos no boot, e não há nada pra configurar: toda vez que você muda um ajuste no app, o `predatorctl-helper` espelha o valor em `/etc/predatorctl/restore.conf`, então ele já está lá pro próximo boot. A unit é condicionada por `ConditionPathExists=/etc/predatorctl/restore.conf`, então numa instalação nova (antes de você mudar qualquer coisa) ela é um no-op inofensivo.
 
-```bash
-sudo cp /etc/predatorctl/restore.conf.example /etc/predatorctl/restore.conf
-sudo $EDITOR /etc/predatorctl/restore.conf              # descomente os valores que quiser
-sudo systemctl restart predatorctl-restore.service      # aplica agora, ou só reinicie
-```
+Mantém a mesma fronteira de privilégio de tudo o resto. A escrita espelhada acontece dentro do próprio `predatorctl-helper` — o valor já passou pela whitelist e pelo `validate()` para a escrita real no sysfs um instante antes, então escrever a mesma string num segundo caminho fixo não é uma superfície de injeção nova. No boot, a unit roda como root diretamente (não há sessão interativa pra pedir senha, então não dá pra passar por `pkexec`), mas o `predatorctl-restore` não escreve em sysfs nenhum — só lê o config e chama o mesmo helper. `/etc/predatorctl/restore.conf` é root-owned e não gravável pelo usuário comum, então não dá pra usar isso pra contrabandear escritas arbitrárias em nenhuma das duas etapas.
 
-`/etc/predatorctl/restore.conf` é root-owned e não gravável pelo usuário comum, então não dá pra usar isso para contrabandear escritas arbitrárias na etapa de restauração que roda como root.
+Normalmente você nunca precisa tocar nesse arquivo; `data/restore.conf.example` documenta o formato caso queira adicionar uma entrada que o app não cobre.
 
 ## Testes
 
