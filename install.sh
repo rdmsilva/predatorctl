@@ -6,22 +6,23 @@
 # the launcher, the icon, the menu entry (.desktop) and the auth_admin_keep
 # polkit rule (password once per session — NOT passwordless).
 #
-# Usage:  sudo ./install.sh [after-unit]
+# Usage:  sudo ./install.sh [--after=UNIT]
 #
-#   after-unit  optional systemd unit name, e.g. power-profiles-daemon.service.
-#               Some system power-management daemons also own
-#               /sys/firmware/acpi/platform_profile and can start (via D-Bus
-#               activation) *after* predatorctl-restore.service at boot,
-#               overwriting the restored thermal profile with their own
-#               default. Passing one here adds a drop-in ordering
-#               predatorctl-restore.service after it (Wants=+After=), so it
-#               starts first and settles before we write.
+#   --after=UNIT  optional systemd unit name, e.g.
+#                 --after=power-profiles-daemon.service. Some system
+#                 power-management daemons also own
+#                 /sys/firmware/acpi/platform_profile and can start (via
+#                 D-Bus activation) *after* predatorctl-restore.service at
+#                 boot, overwriting the restored thermal profile with their
+#                 own default. Passing one here adds a drop-in ordering
+#                 predatorctl-restore.service after it (Wants=+After=), so
+#                 it starts first and settles before we write.
 #
-#               NOT applied unless you ask: Wants= would also *start* that
-#               unit, and some of these daemons Conflicts= each other (e.g.
-#               power-profiles-daemon conflicts with tlp) -- pulling one in
-#               could stop a power-management tool you're already using on
-#               purpose. Only pass this if you've hit the race yourself.
+#                 NOT applied unless you ask: Wants= would also *start* that
+#                 unit, and some of these daemons Conflicts= each other (e.g.
+#                 power-profiles-daemon conflicts with tlp) -- pulling one in
+#                 could stop a power-management tool you're already using on
+#                 purpose. Only pass this if you've hit the race yourself.
 #
 set -euo pipefail
 
@@ -36,7 +37,16 @@ RESTORE_UNIT="/etc/systemd/system/predatorctl-restore.service"
 RESTORE_ETC="/etc/predatorctl"
 RESTORE_DROPIN_DIR="/etc/systemd/system/predatorctl-restore.service.d"
 
-AFTER_UNIT="${1:-}"
+AFTER_UNIT=""
+for arg in "$@"; do
+    case "$arg" in
+        --after=*) AFTER_UNIT="${arg#--after=}" ;;
+        *)
+            echo "Error: unknown argument '$arg' (usage: sudo ./install.sh [--after=UNIT])" >&2
+            exit 1
+            ;;
+    esac
+done
 
 SRC="$(cd "$(dirname "$0")" && pwd)"
 
@@ -46,7 +56,7 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 if [[ -n "$AFTER_UNIT" && ! "$AFTER_UNIT" =~ ^[A-Za-z0-9:_.@-]+\.service$ ]]; then
-    echo "Error: '$AFTER_UNIT' doesn't look like a systemd unit name (expected *.service)" >&2
+    echo "Error: '--after=$AFTER_UNIT' doesn't look like a systemd unit name (expected *.service)" >&2
     exit 1
 fi
 
@@ -119,6 +129,6 @@ if [[ -z "$AFTER_UNIT" ]]; then
     echo "If your thermal profile reverts shortly after boot, a system"
     echo "power-management daemon (e.g. power-profiles-daemon on GNOME/KDE)"
     echo "may be racing us for /sys/firmware/acpi/platform_profile. Re-run with"
-    echo "  sudo ./install.sh power-profiles-daemon.service"
+    echo "  sudo ./install.sh --after=power-profiles-daemon.service"
     echo "to fix it -- see install.sh for why this isn't the default."
 fi

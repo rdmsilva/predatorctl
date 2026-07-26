@@ -121,7 +121,7 @@ Normalmente você nunca precisa tocar nesse arquivo; `data/restore.conf.example`
 Se isso acontecer com você, resolve dizendo ao instalador pra ordenar nosso serviço depois do que está disputando com a gente:
 
 ```bash
-sudo ./install.sh power-profiles-daemon.service    # ou: sudo make install AFTER_UNIT=power-profiles-daemon.service
+sudo ./install.sh --after=power-profiles-daemon.service    # ou: sudo make install AFTER_UNIT=power-profiles-daemon.service
 ```
 
 Isso não é o padrão porque também *inicia* essa unit se ela ainda não estiver rodando (necessário pra realmente vencer a corrida, não só ordenar contra ela), e alguns desses daemons têm `Conflicts=` mútuo entre si — o `power-profiles-daemon` conflita com o `tlp`, por exemplo. Puxar um numa máquina que usa o outro pararia ele, um efeito colateral maior e sem relação que o instalador não vai assumir por conta própria. Só passe essa opção se você realmente viu o perfil voltar ao padrão depois do boot.

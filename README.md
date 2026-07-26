@@ -119,7 +119,7 @@ You normally never touch this file directly; `data/restore.conf.example` documen
 If you hit this, fix it by telling the installer to order our service after the one racing you:
 
 ```bash
-sudo ./install.sh power-profiles-daemon.service    # or: sudo make install AFTER_UNIT=power-profiles-daemon.service
+sudo ./install.sh --after=power-profiles-daemon.service    # or: sudo make install AFTER_UNIT=power-profiles-daemon.service
 ```
 
 This isn't the default because it also *starts* that unit if it isn't already running (needed to actually win the race, not just order against it), and some of these daemons mutually `Conflicts=` each other — `power-profiles-daemon` conflicts with `tlp`, for instance. Pulling one in on a machine using the other would stop it, which is a bigger, unrelated side effect the installer won't take on your behalf. Only pass this if you've actually seen your profile revert after boot.
