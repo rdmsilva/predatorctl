@@ -58,11 +58,15 @@ install -m 644 "$SRC/data/predatorctl.desktop" "$DESKTOP"
 echo "==> Polkit rule (auth_admin_keep): $POLKIT"
 install -m 644 "$SRC/data/49-predatorctl.rules" "$POLKIT"
 
-echo "==> Boot-time preference restore (optional, not enabled): $RESTORE_UNIT"
+echo "==> Boot-time preference restore (enabled, inert until configured): $RESTORE_UNIT"
 install -d -m 755 "$RESTORE_ETC"
 install -m 644 "$SRC/data/restore.conf.example" "$RESTORE_ETC/restore.conf.example"
 install -m 644 "$SRC/data/predatorctl-restore.service" "$RESTORE_UNIT"
 systemctl daemon-reload 2>/dev/null || true
+# Safe to enable unconditionally: ConditionPathExists=/etc/predatorctl/restore.conf
+# in the unit makes this a no-op (successful, RemainAfterExit) until that
+# root-only-writable file exists — see CLAUDE.md.
+systemctl enable --now predatorctl-restore.service 2>/dev/null || true
 
 # refresh caches (silent if the tools aren't present)
 gtk-update-icon-cache -q /usr/share/icons/hicolor 2>/dev/null || true
@@ -74,7 +78,7 @@ echo "You'll be asked for your password once per session (auth_admin_keep, ~5 mi
 echo
 echo "linuwu_sense reloads with driver defaults on every reboot, so your last"
 echo "profile/RGB/battery-limiter settings are lost until you reopen the app."
-echo "To restore them automatically at boot instead (opt-in, off by default):"
+echo "predatorctl-restore.service is enabled but does nothing until you opt in:"
 echo "  sudo cp $RESTORE_ETC/restore.conf.example $RESTORE_ETC/restore.conf"
 echo "  sudo \$EDITOR $RESTORE_ETC/restore.conf"
-echo "  sudo systemctl enable --now predatorctl-restore.service"
+echo "  sudo systemctl restart predatorctl-restore.service   # apply now, or just reboot"

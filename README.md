@@ -108,12 +108,12 @@ sudo ./uninstall.sh    # or: sudo make uninstall
 
 `linuwu_sense` reloads with its own driver defaults on every boot, and predatorctl has no background daemon — so your last thermal profile, RGB effect, and battery limiter are lost until you reopen the app and set them again.
 
-`install.sh` also installs (but does **not** enable) a `predatorctl-restore.service` systemd unit that re-applies saved values at boot. It's opt-in and keeps the same privilege boundary as everything else: the unit runs as root (no interactive session exists at boot to prompt for a password, so it can't go through `pkexec`), but it performs no sysfs writes itself — it only reads `/etc/predatorctl/restore.conf` and calls the same whitelisted, validating `predatorctl-helper` the GUI uses.
+`install.sh` also installs and enables a `predatorctl-restore.service` systemd unit that re-applies saved values at boot — but it's harmless out of the box: the unit is gated by `ConditionPathExists=/etc/predatorctl/restore.conf`, so it does nothing until that file exists. It keeps the same privilege boundary as everything else: the unit runs as root (no interactive session exists at boot to prompt for a password, so it can't go through `pkexec`), but it performs no sysfs writes itself — it only reads `/etc/predatorctl/restore.conf` and calls the same whitelisted, validating `predatorctl-helper` the GUI uses.
 
 ```bash
 sudo cp /etc/predatorctl/restore.conf.example /etc/predatorctl/restore.conf
-sudo $EDITOR /etc/predatorctl/restore.conf       # uncomment the values you want
-sudo systemctl enable --now predatorctl-restore.service
+sudo $EDITOR /etc/predatorctl/restore.conf              # uncomment the values you want
+sudo systemctl restart predatorctl-restore.service      # apply now, or just reboot
 ```
 
 `/etc/predatorctl/restore.conf` is root-owned and not user-writable, so it can't be used to smuggle arbitrary writes into the root-run restore step.
