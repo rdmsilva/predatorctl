@@ -9,3 +9,4 @@ Terminal=false
 Categories=Settings;HardwareSettings;
 Keywords=predator;acer;nitro;fan;rgb;thermal;turbo;battery;
 StartupNotify=true
+StartupWMClass=io.github.rdmsilva.predatorctl

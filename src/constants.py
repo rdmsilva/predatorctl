@@ -8,7 +8,7 @@ color (chrome: active nav, switches, buttons); green/amber/red are reserved
 for DATA (thermal state). Chrome never competes with data.
 """
 
-APP_ID = "com.rafael.predatorctl"
+APP_ID = "io.github.rdmsilva.predatorctl"
 APP_NAME = "Predator Control"
 
 # ─── Palette (single source for CSS and the Cairo gauge drawing) ───────────
