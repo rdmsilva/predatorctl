@@ -246,6 +246,7 @@ RGB_PRESETS = [
 
 # Keyboard RGB effects (the `mode` field of four_zone_mode). On the PHN16-72
 # static mode (0) does not light up — only the animated effects below.
+# Matches the effect switch in linuwu_sense.c (four_zoned_rgb_kb_store).
 # (id, friendly_name)
 KB_EFFECTS = [
     (1, "Breathing"),
@@ -253,4 +254,12 @@ KB_EFFECTS = [
     (3, "Wave"),
     (4, "Shifting"),
     (5, "Zoom"),
+    (6, "Meteor"),
+    (7, "Twinkling"),
 ]
+
+# Per linuwu_sense.c: some effects force these fields to 0 regardless of what
+# we send, so the corresponding controls are disabled in the UI rather than
+# implying they do something.
+KB_EFFECTS_NO_SPEED = {1}      # Breathing: driver forces speed=0
+KB_EFFECTS_NO_COLOR = {2, 3}   # Neon, Wave: driver zeroes R/G/B

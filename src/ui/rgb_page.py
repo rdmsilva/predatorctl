@@ -17,7 +17,7 @@ regardless of what was actually last set.
 
 from gi.repository import Gtk, Adw, Gdk
 
-from constants import RGB_PRESETS, KB_EFFECTS
+from constants import RGB_PRESETS, KB_EFFECTS, KB_EFFECTS_NO_SPEED, KB_EFFECTS_NO_COLOR
 
 
 class RgbPage(Adw.Bin):
@@ -60,17 +60,17 @@ class RgbPage(Adw.Bin):
 
         # Color presets — clicking applies immediately with the current effect
         presets_group = Adw.PreferencesGroup(title="Colors")
-        flow = Gtk.FlowBox()
-        flow.set_homogeneous(True)
-        flow.set_column_spacing(8)
-        flow.set_row_spacing(8)
-        flow.set_min_children_per_line(5)
-        flow.set_selection_mode(Gtk.SelectionMode.NONE)
+        self.color_flow = Gtk.FlowBox()
+        self.color_flow.set_homogeneous(True)
+        self.color_flow.set_column_spacing(8)
+        self.color_flow.set_row_spacing(8)
+        self.color_flow.set_min_children_per_line(5)
+        self.color_flow.set_selection_mode(Gtk.SelectionMode.NONE)
 
         for name, hex_val in RGB_PRESETS:
-            flow.append(self._make_color_swatch(name, hex_val))
+            self.color_flow.append(self._make_color_swatch(name, hex_val))
 
-        presets_group.add(flow)
+        presets_group.add(self.color_flow)
         outer.append(presets_group)
 
         # Custom color + buttons
@@ -80,11 +80,11 @@ class RgbPage(Adw.Bin):
 
         btn_box = Gtk.Box(spacing=12)
         btn_box.set_margin_top(12)
-        apply_btn = Gtk.Button(label="Apply Color")
-        apply_btn.add_css_class("suggested-action")
-        apply_btn.set_hexpand(True)
-        apply_btn.connect("clicked", self._on_custom_apply)
-        btn_box.append(apply_btn)
+        self.apply_btn = Gtk.Button(label="Apply Color")
+        self.apply_btn.add_css_class("suggested-action")
+        self.apply_btn.set_hexpand(True)
+        self.apply_btn.connect("clicked", self._on_custom_apply)
+        btn_box.append(self.apply_btn)
 
         off_btn = Gtk.Button(label="Turn Off")
         off_btn.add_css_class("destructive-action")
@@ -97,6 +97,7 @@ class RgbPage(Adw.Bin):
 
         outer.append(Gtk.Label(vexpand=True))
         self.set_child(outer)
+        self._update_widget_sensitivity(self._current_effect_mode())
 
     def _make_color_swatch(self, name, hex_val):
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
@@ -127,6 +128,17 @@ class RgbPage(Adw.Bin):
     def _current_effect_mode(self):
         return KB_EFFECTS[self.effect_row.get_selected()][0]
 
+    def _update_widget_sensitivity(self, mode):
+        """Some effects force speed or color to fixed values regardless of
+        what we send (see KB_EFFECTS_NO_SPEED/KB_EFFECTS_NO_COLOR) -- grey
+        out the controls that wouldn't do anything so the UI doesn't imply
+        they're adjustable."""
+        self.speed_row.set_sensitive(mode not in KB_EFFECTS_NO_SPEED)
+        color_enabled = mode not in KB_EFFECTS_NO_COLOR
+        self.color_flow.set_sensitive(color_enabled)
+        self.hex_entry.set_sensitive(color_enabled)
+        self.apply_btn.set_sensitive(color_enabled)
+
     def _apply(self):
         """Applies the current color + effect + brightness + speed."""
         ok, msg = self.app.control.set_kb_effect(
@@ -156,7 +168,9 @@ class RgbPage(Adw.Bin):
         self._apply()
 
     def _on_param_changed(self, *_):
-        # Changing effect/brightness/speed re-applies with the current color.
+        # Sensitivity must update even while suppressed (programmatic sync on
+        # load) -- only the pkexec write below is gated by _suppress.
+        self._update_widget_sensitivity(self._current_effect_mode())
         if self._suppress:
             return
         self._apply()
