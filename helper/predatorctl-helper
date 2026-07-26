@@ -2,7 +2,10 @@
 """
 predatorctl - predatorctl-helper
 Privileged script executed via pkexec.
-Takes arguments on the command line and writes to root-only sysfs.
+Takes arguments on the command line and writes to root-only sysfs. On
+success, also mirrors the value into /etc/predatorctl/restore.conf so
+predatorctl-restore.service can re-apply it at the next boot (see _persist
+below) -- no manual config editing needed for that to work.
 
 Usage: pkexec predatorctl-helper <action> <value>
 Ex:    pkexec predatorctl-helper fan_speed 0,0
@@ -19,6 +22,15 @@ SYSFS_BASE = Path("/sys/module/linuwu_sense/drivers/platform:acer-wmi/acer-wmi")
 PREDATOR_SENSE = SYSFS_BASE / "predator_sense"
 FOUR_ZONED_KB = SYSFS_BASE / "four_zoned_kb"
 PLATFORM_PROFILE = Path("/sys/firmware/acpi/platform_profile")
+
+RESTORE_DIR = Path("/etc/predatorctl")
+RESTORE_CONF = RESTORE_DIR / "restore.conf"
+RESTORE_HEADER = (
+    "# predatorctl-restore.service preferences.\n"
+    "# Auto-updated by predatorctl-helper every time a value is set from the\n"
+    "# app; re-applied at boot by predatorctl-restore.service. Safe to edit\n"
+    "# by hand too -- see data/restore.conf.example for the format.\n"
+)
 
 # Whitelist of allowed actions (one write, one path)
 ACTIONS = {
@@ -79,6 +91,34 @@ def validate(action, value):
     return False
 
 
+def _persist(action, value):
+    """Mirrors a successful (action, value) write into restore.conf.
+
+    Best-effort and non-fatal: the value was already validated for the
+    sysfs write above, so writing the same string to a fixed, hardcoded
+    path is not a new injection surface -- but a failure here (e.g. a
+    read-only /etc) must not turn an otherwise-successful hardware write
+    into a reported error.
+    """
+    try:
+        RESTORE_DIR.mkdir(mode=0o755, exist_ok=True)
+        lines = RESTORE_CONF.read_text().splitlines() if RESTORE_CONF.exists() else None
+        if lines is None:
+            lines = RESTORE_HEADER.splitlines()
+        prefix = f"{action}="
+        new_line = f"{action}={value}"
+        for i, line in enumerate(lines):
+            if line.startswith(prefix):
+                lines[i] = new_line
+                break
+        else:
+            lines.append(new_line)
+        RESTORE_CONF.write_text("\n".join(lines) + "\n")
+        RESTORE_CONF.chmod(0o644)
+    except OSError as e:
+        print(f"WARNING: could not save '{action}' for boot restore: {e}", file=sys.stderr)
+
+
 def main():
     if os.geteuid() != 0:
         print("ERROR: must run as root", file=sys.stderr)
@@ -102,10 +142,12 @@ def main():
     target = ACTIONS[action]
     try:
         target.write_text(value)
-        print(f"OK: {action} = {value}")
     except OSError as e:
         print(f"ERROR: write failed: {e}", file=sys.stderr)
         sys.exit(1)
+
+    _persist(action, value)
+    print(f"OK: {action} = {value}")
 
 
 if __name__ == "__main__":

@@ -106,6 +106,26 @@ O instalador copia o app para um diretório root-owned (um script executado como
 sudo ./uninstall.sh    # ou: sudo make uninstall
 ```
 
+### Restaurando preferências no boot
+
+O `linuwu_sense` recarrega com os defaults do driver a cada boot, e o predatorctl não tem daemon em segundo plano — então, sem isso, seu último perfil térmico, efeito de RGB e limitador de bateria seriam perdidos até você reabrir o app e configurar de novo.
+
+O `install.sh` instala e habilita uma unit systemd `predatorctl-restore.service` que reaplica os valores salvos no boot, e não há nada pra configurar: toda vez que você muda um ajuste no app, o `predatorctl-helper` espelha o valor em `/etc/predatorctl/restore.conf`, então ele já está lá pro próximo boot. A unit é condicionada por `ConditionPathExists=/etc/predatorctl/restore.conf`, então numa instalação nova (antes de você mudar qualquer coisa) ela é um no-op inofensivo.
+
+Mantém a mesma fronteira de privilégio de tudo o resto. A escrita espelhada acontece dentro do próprio `predatorctl-helper` — o valor já passou pela whitelist e pelo `validate()` para a escrita real no sysfs um instante antes, então escrever a mesma string num segundo caminho fixo não é uma superfície de injeção nova. No boot, a unit roda como root diretamente (não há sessão interativa pra pedir senha, então não dá pra passar por `pkexec`), mas o `predatorctl-restore` não escreve em sysfs nenhum — só lê o config e chama o mesmo helper. `/etc/predatorctl/restore.conf` é root-owned e não gravável pelo usuário comum, então não dá pra usar isso pra contrabandear escritas arbitrárias em nenhuma das duas etapas.
+
+Normalmente você nunca precisa tocar nesse arquivo; `data/restore.conf.example` documenta o formato caso queira adicionar uma entrada que o app não cobre.
+
+**Ressalva conhecida — só o perfil térmico:** `platform_profile` é um nó sysfs genérico da ACPI (`/sys/firmware/acpi/platform_profile`), não é exclusivo do predatorctl — se seu ambiente desktop roda um daemon de gerenciamento de energia do próprio sistema que também controla esse nó (ex.: `power-profiles-daemon`, comum em GNOME/KDE), ele pode iniciar *depois* do `predatorctl-restore.service` no boot e sobrescrever o perfil restaurado com o default dele. RGB, limitador de bateria e ventoinha ficam em caminhos sysfs exclusivos do `linuwu_sense` que nada mais toca, então não são afetados.
+
+Se isso acontecer com você, resolve dizendo ao instalador pra ordenar nosso serviço depois do que está disputando com a gente:
+
+```bash
+sudo ./install.sh --after=power-profiles-daemon.service    # ou: sudo make install AFTER_UNIT=power-profiles-daemon.service
+```
+
+Isso não é o padrão porque também *inicia* essa unit se ela ainda não estiver rodando (necessário pra realmente vencer a corrida, não só ordenar contra ela), e alguns desses daemons têm `Conflicts=` mútuo entre si — o `power-profiles-daemon` conflita com o `tlp`, por exemplo. Puxar um numa máquina que usa o outro pararia ele, um efeito colateral maior e sem relação que o instalador não vai assumir por conta própria. Só passe essa opção se você realmente viu o perfil voltar ao padrão depois do boot.
+
 ## Testes
 
 Não precisa de hardware — parsers, validação e formatos de valores são testados com tudo mockado:
@@ -125,7 +145,8 @@ src/domain/      modelos + portas (SensorPort leitura / ControlPort escrita) —
 src/adapters/    sysfs_sensors.py (leituras), pkexec_control.py (escritas via pkexec)
 src/ui/          páginas GTK4/libadwaita (dashboard, temperaturas, ventoinha, perfil, rgb, bateria)
 helper/          predatorctl-helper — o único código que roda como root
-data/            entrada .desktop, ícone, regra polkit
+                 predatorctl-restore — restauração opcional de preferências no boot, chama o helper acima
+data/            entrada .desktop, ícone, regra polkit, predatorctl-restore.service + config de exemplo
 ```
 
 `src/main.py` é o composition root: troque os adapters por fakes ali e toda a UI roda sem o hardware. Veja o `CLAUDE.md` para um tour mais profundo (formatos de valores, modelo de threading, peculiaridades do hardware).

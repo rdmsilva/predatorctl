@@ -104,6 +104,26 @@ The installer copies the app to a root-owned directory (a user-writable root-exe
 sudo ./uninstall.sh    # or: sudo make uninstall
 ```
 
+### Restoring preferences at boot
+
+`linuwu_sense` reloads with its own driver defaults on every boot, and predatorctl has no background daemon — so without this, your last thermal profile, RGB effect, and battery limiter would be lost until you reopened the app and set them again.
+
+`install.sh` installs and enables a `predatorctl-restore.service` systemd unit that re-applies saved values at boot, and there's nothing to configure: every time you change a setting in the app, `predatorctl-helper` mirrors it into `/etc/predatorctl/restore.conf`, so it's already there for the next boot. The unit is gated by `ConditionPathExists=/etc/predatorctl/restore.conf`, so on a fresh install (before you've changed anything) it's a harmless no-op.
+
+It keeps the same privilege boundary as everything else. The mirrored write happens inside `predatorctl-helper` itself — the value was already whitelisted and validated for the real sysfs write a moment earlier, so writing the same string to a second, fixed path isn't a new injection surface. At boot, the unit runs as root directly (no interactive session exists to prompt for a password, so it can't go through `pkexec`), but `predatorctl-restore` performs no sysfs writes itself — it only reads the config and calls the same helper. `/etc/predatorctl/restore.conf` is root-owned and not user-writable, so it can't be used to smuggle arbitrary writes into either step.
+
+You normally never touch this file directly; `data/restore.conf.example` documents the format in case you want to add an entry the app doesn't cover.
+
+**Known caveat — thermal profile only:** `platform_profile` is a generic ACPI sysfs node (`/sys/firmware/acpi/platform_profile`), not a predatorctl-specific one — if your desktop runs a system power-management daemon that also manages it (e.g. `power-profiles-daemon`, common on GNOME/KDE), it can start *after* `predatorctl-restore.service` at boot and overwrite the restored profile with its own default. RGB, battery limiter and fan settings live under Predator-specific `linuwu_sense` sysfs paths that nothing else touches, so they aren't affected.
+
+If you hit this, fix it by telling the installer to order our service after the one racing you:
+
+```bash
+sudo ./install.sh --after=power-profiles-daemon.service    # or: sudo make install AFTER_UNIT=power-profiles-daemon.service
+```
+
+This isn't the default because it also *starts* that unit if it isn't already running (needed to actually win the race, not just order against it), and some of these daemons mutually `Conflicts=` each other — `power-profiles-daemon` conflicts with `tlp`, for instance. Pulling one in on a machine using the other would stop it, which is a bigger, unrelated side effect the installer won't take on your behalf. Only pass this if you've actually seen your profile revert after boot.
+
 ## Tests
 
 No hardware needed — parsers, validation and value formats are tested with everything mocked:
@@ -123,7 +143,8 @@ src/domain/      models + ports (SensorPort read / ControlPort write) — no GTK
 src/adapters/    sysfs_sensors.py (reads), pkexec_control.py (writes via pkexec)
 src/ui/          GTK4/libadwaita pages (dashboard, temperatures, fan, profile, rgb, battery)
 helper/          predatorctl-helper — the only code that runs as root
-data/            .desktop entry, icon, polkit rule
+                 predatorctl-restore — optional boot-time preference restore, calls the helper above
+data/            .desktop entry, icon, polkit rule, predatorctl-restore.service + example config
 ```
 
 `src/main.py` is the composition root: swap the adapters for fakes there and the whole UI runs off-hardware. See `CLAUDE.md` for a deeper tour (value formats, threading model, hardware quirks).

@@ -1,0 +1,24 @@
+# predatorctl-restore.service preferences.
+#
+# You normally don't need to touch this file: predatorctl-helper writes
+# /etc/predatorctl/restore.conf itself, automatically, every time you change
+# a setting (thermal profile, RGB effect, battery limiter, fan) in the app --
+# so your last values are already reapplied at the next boot with zero setup.
+#
+# This example is here for the manual case: adding an entry the app doesn't
+# cover, or seeding a value before ever launching the GUI. To use it, copy
+# it to /etc/predatorctl/restore.conf (root-owned, not user-writable) and
+# uncomment/edit the lines you want -- predatorctl-helper will preserve your
+# comments and just update its own lines going forward.
+#
+# One "action=value" pair per line, same action names and value formats as
+# the pkexec helper (see helper/predatorctl-helper ACTIONS/validate(), and
+# "Value formats" in CLAUDE.md). Blank lines and lines starting with '#'
+# are ignored. Invalid lines/values are skipped with a warning in the
+# journal (`journalctl -u predatorctl-restore`), never fatal to the rest.
+
+# platform_profile=balanced-performance
+# battery_limiter=1
+# lcd_override=0
+# fan_speed=0,0
+# four_zone_mode=1,4,100,1,0,255,120

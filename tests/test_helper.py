@@ -8,8 +8,10 @@ import importlib.machinery
 import importlib.util
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 HELPER = ROOT / "helper" / "predatorctl-helper"
@@ -121,6 +123,58 @@ class TestWhitelist(unittest.TestCase):
         """Every whitelisted target lives under /sys — never anywhere else."""
         for action, path in helper.ACTIONS.items():
             self.assertTrue(str(path).startswith("/sys/"), f"{action}: {path}")
+
+
+class TestPersist(unittest.TestCase):
+    """_persist() mirrors successful writes into restore.conf for the boot
+    restore service -- exercised against a throwaway tmp dir, never the
+    real /etc/predatorctl."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmpdir.cleanup)
+        restore_dir = Path(self.tmpdir.name) / "predatorctl"
+        restore_conf = restore_dir / "restore.conf"
+        patcher_dir = patch.object(helper, "RESTORE_DIR", restore_dir)
+        patcher_conf = patch.object(helper, "RESTORE_CONF", restore_conf)
+        patcher_dir.start()
+        patcher_conf.start()
+        self.addCleanup(patcher_dir.stop)
+        self.addCleanup(patcher_conf.stop)
+        self.restore_dir = restore_dir
+        self.restore_conf = restore_conf
+
+    def test_creates_dir_and_file_on_first_write(self):
+        helper._persist("platform_profile", "balanced")
+        self.assertTrue(self.restore_conf.exists())
+        self.assertIn("platform_profile=balanced", self.restore_conf.read_text())
+
+    def test_second_action_appends_first_is_kept(self):
+        helper._persist("platform_profile", "balanced")
+        helper._persist("battery_limiter", "1")
+        text = self.restore_conf.read_text()
+        self.assertIn("platform_profile=balanced", text)
+        self.assertIn("battery_limiter=1", text)
+
+    def test_same_action_updates_in_place_not_duplicated(self):
+        helper._persist("platform_profile", "balanced")
+        helper._persist("platform_profile", "performance")
+        text = self.restore_conf.read_text()
+        active_lines = [l for l in text.splitlines() if l.startswith("platform_profile=")]
+        self.assertEqual(active_lines, ["platform_profile=performance"])
+
+    def test_preserves_hand_edited_comments(self):
+        self.restore_dir.mkdir(parents=True)
+        self.restore_conf.write_text("# a hand-written note\n# fan_speed=0,0\n")
+        helper._persist("platform_profile", "performance")
+        text = self.restore_conf.read_text()
+        self.assertIn("# a hand-written note", text)
+        self.assertIn("# fan_speed=0,0", text)
+        self.assertIn("platform_profile=performance", text)
+
+    def test_oserror_does_not_raise(self):
+        with patch.object(Path, "mkdir", side_effect=OSError("read-only filesystem")):
+            helper._persist("platform_profile", "balanced")  # must not raise
 
 
 class TestExecution(unittest.TestCase):
