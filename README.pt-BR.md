@@ -116,7 +116,15 @@ Mantém a mesma fronteira de privilégio de tudo o resto. A escrita espelhada ac
 
 Normalmente você nunca precisa tocar nesse arquivo; `data/restore.conf.example` documenta o formato caso queira adicionar uma entrada que o app não cobre.
 
-**Ressalva conhecida — só o perfil térmico:** `platform_profile` é um nó sysfs genérico da ACPI (`/sys/firmware/acpi/platform_profile`), não é exclusivo do predatorctl — se seu ambiente desktop roda um daemon de gerenciamento de energia do próprio sistema que também controla esse nó (ex.: `power-profiles-daemon`, comum em GNOME/KDE), ele pode iniciar *depois* do `predatorctl-restore.service` no boot e sobrescrever o perfil restaurado com o default dele. RGB, limitador de bateria e ventoinha ficam em caminhos sysfs exclusivos do `linuwu_sense` que nada mais toca, então não são afetados. Se isso acontecer com você, confira `systemctl status power-profiles-daemon` (ou o equivalente do seu DE) — reaplicar o perfil pela GUI do predatorctl depois do login sempre funciona, independente disso.
+**Ressalva conhecida — só o perfil térmico:** `platform_profile` é um nó sysfs genérico da ACPI (`/sys/firmware/acpi/platform_profile`), não é exclusivo do predatorctl — se seu ambiente desktop roda um daemon de gerenciamento de energia do próprio sistema que também controla esse nó (ex.: `power-profiles-daemon`, comum em GNOME/KDE), ele pode iniciar *depois* do `predatorctl-restore.service` no boot e sobrescrever o perfil restaurado com o default dele. RGB, limitador de bateria e ventoinha ficam em caminhos sysfs exclusivos do `linuwu_sense` que nada mais toca, então não são afetados.
+
+Se isso acontecer com você, resolve dizendo ao instalador pra ordenar nosso serviço depois do que está disputando com a gente:
+
+```bash
+sudo ./install.sh power-profiles-daemon.service    # ou: sudo make install AFTER_UNIT=power-profiles-daemon.service
+```
+
+Isso não é o padrão porque também *inicia* essa unit se ela ainda não estiver rodando (necessário pra realmente vencer a corrida, não só ordenar contra ela), e alguns desses daemons têm `Conflicts=` mútuo entre si — o `power-profiles-daemon` conflita com o `tlp`, por exemplo. Puxar um numa máquina que usa o outro pararia ele, um efeito colateral maior e sem relação que o instalador não vai assumir por conta própria. Só passe essa opção se você realmente viu o perfil voltar ao padrão depois do boot.
 
 ## Testes
 

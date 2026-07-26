@@ -11,8 +11,8 @@ run:  ## Run the app from source (dev; every write asks for a password)
 test:  ## Run the test suite (no hardware, no GTK)
 	python3 -m unittest discover tests -v
 
-install:  ## Install system-wide (needs root: sudo make install)
-	./install.sh
+install:  ## Install system-wide (needs root: sudo make install [AFTER_UNIT=power-profiles-daemon.service])
+	./install.sh $(AFTER_UNIT)
 
 uninstall:  ## Remove everything install created (sudo make uninstall)
 	./uninstall.sh

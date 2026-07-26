@@ -12,6 +12,7 @@ fi
 
 systemctl disable --now predatorctl-restore.service >/dev/null 2>&1 || true
 rm -f /etc/systemd/system/predatorctl-restore.service
+rm -rf /etc/systemd/system/predatorctl-restore.service.d
 systemctl daemon-reload 2>/dev/null || true
 rm -f /etc/predatorctl/restore.conf.example
 
