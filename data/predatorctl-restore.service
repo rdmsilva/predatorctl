@@ -1,0 +1,21 @@
+[Unit]
+Description=Restore predatorctl preferences (thermal profile, RGB, battery limiter) at boot
+Documentation=https://github.com/rdmsilva/predatorctl
+# linuwu_sense (and its predator_sense/four_zoned_kb sysfs nodes) must exist
+# before we can write to them; it's loaded by systemd-modules-load.service
+# via /etc/modules-load.d/linuwu_sense.conf.
+After=systemd-modules-load.service
+Wants=systemd-modules-load.service
+# No-op (not "failed") if the user hasn't opted in by creating a config.
+ConditionPathExists=/etc/predatorctl/restore.conf
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# Root, no pkexec: this unit already runs as root at boot, and there is no
+# interactive session to prompt for a password. The privileged surface is
+# still just predatorctl-helper -- see helper/predatorctl-restore.
+ExecStart=/usr/local/lib/predatorctl/helper/predatorctl-restore
+
+[Install]
+WantedBy=multi-user.target

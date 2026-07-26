@@ -1,0 +1,69 @@
+#!/usr/bin/python3
+"""
+predatorctl - predatorctl-restore
+
+Re-applies saved preferences (thermal profile, keyboard RGB, battery
+limiter, ...) at boot, after linuwu_sense reloads with its own driver
+defaults -- predatorctl has no daemon and reboots otherwise lose whatever
+you last set in the GUI.
+
+Runs as root via the predatorctl-restore.service systemd unit (Type=oneshot,
+at boot) -- NOT via pkexec, since there is no interactive user session at
+that point to prompt for a password. It performs no sysfs writes itself: it
+only reads a config file and shells out to the same whitelisted, validating
+predatorctl-helper the GUI uses, so the security boundary never moves and
+this script needs no privileged logic of its own.
+
+Config file: /etc/predatorctl/restore.conf (root-owned, not user-writable --
+see install.sh). One "action=value" pair per line, using the exact same
+action names and value formats as predatorctl-helper (see ACTIONS there and
+"Value formats" in CLAUDE.md). Blank lines and lines starting with '#' are
+ignored. See data/restore.conf.example.
+
+Usage: predatorctl-restore   (no arguments; reads the config file above)
+"""
+
+import subprocess
+import sys
+from pathlib import Path
+
+CONFIG = Path("/etc/predatorctl/restore.conf")
+HELPER = Path(__file__).resolve().with_name("predatorctl-helper")
+
+
+def parse(text):
+    """Yields (action, value) pairs from config text, skipping blanks/comments."""
+    for lineno, raw in enumerate(text.splitlines(), 1):
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if "=" not in line:
+            print(f"predatorctl-restore: {CONFIG}:{lineno}: no '=' in {raw!r}, skipping",
+                  file=sys.stderr)
+            continue
+        action, _, value = line.partition("=")
+        yield action.strip(), value.strip()
+
+
+def main():
+    if not CONFIG.exists():
+        print(f"predatorctl-restore: no {CONFIG}, nothing to restore")
+        return 0
+
+    exit_code = 0
+    for action, value in parse(CONFIG.read_text()):
+        proc = subprocess.run(
+            [str(HELPER), action, value],
+            capture_output=True, text=True,
+        )
+        if proc.returncode == 0:
+            print(f"predatorctl-restore: {proc.stdout.strip()}")
+        else:
+            print(f"predatorctl-restore: FAILED {action}={value}: {proc.stderr.strip()}",
+                  file=sys.stderr)
+            exit_code = 1
+    return exit_code
+
+
+if __name__ == "__main__":
+    sys.exit(main())

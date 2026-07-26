@@ -104,6 +104,20 @@ The installer copies the app to a root-owned directory (a user-writable root-exe
 sudo ./uninstall.sh    # or: sudo make uninstall
 ```
 
+### Restoring preferences at boot (optional)
+
+`linuwu_sense` reloads with its own driver defaults on every boot, and predatorctl has no background daemon — so your last thermal profile, RGB effect, and battery limiter are lost until you reopen the app and set them again.
+
+`install.sh` also installs (but does **not** enable) a `predatorctl-restore.service` systemd unit that re-applies saved values at boot. It's opt-in and keeps the same privilege boundary as everything else: the unit runs as root (no interactive session exists at boot to prompt for a password, so it can't go through `pkexec`), but it performs no sysfs writes itself — it only reads `/etc/predatorctl/restore.conf` and calls the same whitelisted, validating `predatorctl-helper` the GUI uses.
+
+```bash
+sudo cp /etc/predatorctl/restore.conf.example /etc/predatorctl/restore.conf
+sudo $EDITOR /etc/predatorctl/restore.conf       # uncomment the values you want
+sudo systemctl enable --now predatorctl-restore.service
+```
+
+`/etc/predatorctl/restore.conf` is root-owned and not user-writable, so it can't be used to smuggle arbitrary writes into the root-run restore step.
+
 ## Tests
 
 No hardware needed — parsers, validation and value formats are tested with everything mocked:
@@ -123,7 +137,8 @@ src/domain/      models + ports (SensorPort read / ControlPort write) — no GTK
 src/adapters/    sysfs_sensors.py (reads), pkexec_control.py (writes via pkexec)
 src/ui/          GTK4/libadwaita pages (dashboard, temperatures, fan, profile, rgb, battery)
 helper/          predatorctl-helper — the only code that runs as root
-data/            .desktop entry, icon, polkit rule
+                 predatorctl-restore — optional boot-time preference restore, calls the helper above
+data/            .desktop entry, icon, polkit rule, predatorctl-restore.service + example config
 ```
 
 `src/main.py` is the composition root: swap the adapters for fakes there and the whole UI runs off-hardware. See `CLAUDE.md` for a deeper tour (value formats, threading model, hardware quirks).
