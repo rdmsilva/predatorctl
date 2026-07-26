@@ -6,6 +6,14 @@ Documentation=https://github.com/rdmsilva/predatorctl
 # via /etc/modules-load.d/linuwu_sense.conf.
 After=systemd-modules-load.service
 Wants=systemd-modules-load.service
+# A WantedBy=multi-user.target unit gets an implicit Before=multi-user.target
+# unless it orders itself After= that target explicitly. Without this, an
+# --after=UNIT (install.sh) pointing at anything that's itself
+# After=multi-user.target (power-profiles-daemon.service, for one) creates an
+# ordering cycle: multi-user.target -> UNIT -> us -> multi-user.target.
+# Declaring it here also means we no longer hold up "multi-user.target
+# reached" for a preferences restore that isn't boot-critical.
+After=multi-user.target
 # No-op (not "failed") if the user hasn't opted in by creating a config.
 ConditionPathExists=/etc/predatorctl/restore.conf
 
