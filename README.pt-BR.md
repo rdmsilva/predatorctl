@@ -106,6 +106,20 @@ O instalador copia o app para um diretório root-owned (um script executado como
 sudo ./uninstall.sh    # ou: sudo make uninstall
 ```
 
+### Restaurando preferências no boot (opcional)
+
+O `linuwu_sense` recarrega com os defaults do driver a cada boot, e o predatorctl não tem daemon em segundo plano — então seu último perfil térmico, efeito de RGB e limitador de bateria são perdidos até você reabrir o app e configurar de novo.
+
+O `install.sh` também instala e habilita uma unit systemd `predatorctl-restore.service` que reaplica os valores salvos no boot — mas ela é inofensiva por padrão: a unit é condicionada por `ConditionPathExists=/etc/predatorctl/restore.conf`, então não faz nada até esse arquivo existir. Mantém a mesma fronteira de privilégio de tudo o resto: a unit roda como root (não há sessão interativa no boot para pedir senha, então não dá pra passar por `pkexec`), mas ela mesma não escreve em nenhum sysfs — só lê `/etc/predatorctl/restore.conf` e chama o mesmo `predatorctl-helper` validado e com whitelist que a GUI usa.
+
+```bash
+sudo cp /etc/predatorctl/restore.conf.example /etc/predatorctl/restore.conf
+sudo $EDITOR /etc/predatorctl/restore.conf              # descomente os valores que quiser
+sudo systemctl restart predatorctl-restore.service      # aplica agora, ou só reinicie
+```
+
+`/etc/predatorctl/restore.conf` é root-owned e não gravável pelo usuário comum, então não dá pra usar isso para contrabandear escritas arbitrárias na etapa de restauração que roda como root.
+
 ## Testes
 
 Não precisa de hardware — parsers, validação e formatos de valores são testados com tudo mockado:
@@ -125,7 +139,8 @@ src/domain/      modelos + portas (SensorPort leitura / ControlPort escrita) —
 src/adapters/    sysfs_sensors.py (leituras), pkexec_control.py (escritas via pkexec)
 src/ui/          páginas GTK4/libadwaita (dashboard, temperaturas, ventoinha, perfil, rgb, bateria)
 helper/          predatorctl-helper — o único código que roda como root
-data/            entrada .desktop, ícone, regra polkit
+                 predatorctl-restore — restauração opcional de preferências no boot, chama o helper acima
+data/            entrada .desktop, ícone, regra polkit, predatorctl-restore.service + config de exemplo
 ```
 
 `src/main.py` é o composition root: troque os adapters por fakes ali e toda a UI roda sem o hardware. Veja o `CLAUDE.md` para um tour mais profundo (formatos de valores, modelo de threading, peculiaridades do hardware).
