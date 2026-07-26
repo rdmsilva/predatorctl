@@ -91,6 +91,24 @@ class FanPage(Gtk.Box):
         if auto:
             ok, msg = self.app.control.set_fan_auto()
             self.app.show_toast(msg)
+        else:
+            # Switching off auto must actually write manual values -- without
+            # this, the sysfs fan_speed stays "0,0" (auto) and the next
+            # refresh() tick reads that back and flips the switch on again.
+            cpu = int(self.cpu_row.get_value())
+            gpu = int(self.gpu_row.get_value())
+            if cpu == 0 and gpu == 0:
+                # "0,0" is itself the auto sentinel -- can't express manual
+                # 0%/0%, so start manual mode from a safe non-zero value.
+                cpu = gpu = 50
+                self._suppress_signal = True
+                self.cpu_row.set_value(cpu)
+                self.gpu_row.set_value(gpu)
+                self._suppress_signal = False
+            ok, msg = self.app.control.set_fan_manual(cpu, gpu)
+            self.g_cpu.set_percent(cpu, ACCENT)
+            self.g_gpu.set_percent(gpu, ACCENT)
+            self.app.show_toast(f"Fan: CPU {cpu}% / GPU {gpu}%" if ok else msg)
 
     def _on_slider_changed(self, *_):
         if self._suppress_signal:
