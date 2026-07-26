@@ -114,6 +114,8 @@ It keeps the same privilege boundary as everything else. The mirrored write happ
 
 You normally never touch this file directly; `data/restore.conf.example` documents the format in case you want to add an entry the app doesn't cover.
 
+**Known caveat — thermal profile only:** `platform_profile` is a generic ACPI sysfs node (`/sys/firmware/acpi/platform_profile`), not a predatorctl-specific one — if your desktop runs a system power-management daemon that also manages it (e.g. `power-profiles-daemon`, common on GNOME/KDE), it can start *after* `predatorctl-restore.service` at boot and overwrite the restored profile with its own default. RGB, battery limiter and fan settings live under Predator-specific `linuwu_sense` sysfs paths that nothing else touches, so they aren't affected. If this happens to you, check `systemctl status power-profiles-daemon` (or your DE's equivalent) — reapplying the profile from the predatorctl GUI after login always works regardless.
+
 ## Tests
 
 No hardware needed — parsers, validation and value formats are tested with everything mocked:

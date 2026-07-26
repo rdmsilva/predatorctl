@@ -116,6 +116,8 @@ Mantém a mesma fronteira de privilégio de tudo o resto. A escrita espelhada ac
 
 Normalmente você nunca precisa tocar nesse arquivo; `data/restore.conf.example` documenta o formato caso queira adicionar uma entrada que o app não cobre.
 
+**Ressalva conhecida — só o perfil térmico:** `platform_profile` é um nó sysfs genérico da ACPI (`/sys/firmware/acpi/platform_profile`), não é exclusivo do predatorctl — se seu ambiente desktop roda um daemon de gerenciamento de energia do próprio sistema que também controla esse nó (ex.: `power-profiles-daemon`, comum em GNOME/KDE), ele pode iniciar *depois* do `predatorctl-restore.service` no boot e sobrescrever o perfil restaurado com o default dele. RGB, limitador de bateria e ventoinha ficam em caminhos sysfs exclusivos do `linuwu_sense` que nada mais toca, então não são afetados. Se isso acontecer com você, confira `systemctl status power-profiles-daemon` (ou o equivalente do seu DE) — reaplicar o perfil pela GUI do predatorctl depois do login sempre funciona, independente disso.
+
 ## Testes
 
 Não precisa de hardware — parsers, validação e formatos de valores são testados com tudo mockado:
