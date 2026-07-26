@@ -5,6 +5,3 @@ __pycache__/
 # Claude Code (machine-local permissions)
 .claude/settings.local.json
 
-# Local notes unrelated to the project (KWin bug report)
-KWIN_BUG_MANJARO.md
-KWIN_BUG_REPORT.md
