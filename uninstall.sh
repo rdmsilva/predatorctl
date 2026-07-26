@@ -18,7 +18,8 @@ rm -f /etc/predatorctl/restore.conf.example
 
 rm -rf /usr/local/lib/predatorctl
 rm -f /usr/local/bin/predatorctl
-rm -f /usr/share/applications/predatorctl.desktop
+rm -f /usr/share/applications/io.github.rdmsilva.predatorctl.desktop
+rm -f /usr/share/applications/predatorctl.desktop   # old filename, pre-icon-fix installs
 rm -f /usr/share/icons/hicolor/scalable/apps/predatorctl.svg
 rm -f /etc/polkit-1/rules.d/49-predatorctl.rules
 

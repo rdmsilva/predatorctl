@@ -28,7 +28,7 @@ set -euo pipefail
 
 APP_DIR="/usr/local/lib/predatorctl"
 BIN="/usr/local/bin/predatorctl"
-DESKTOP="/usr/share/applications/predatorctl.desktop"
+DESKTOP="/usr/share/applications/io.github.rdmsilva.predatorctl.desktop"
 ICON="/usr/share/icons/hicolor/scalable/apps/predatorctl.svg"
 POLKIT="/etc/polkit-1/rules.d/49-predatorctl.rules"
 HELPER="$APP_DIR/helper/predatorctl-helper"
@@ -86,7 +86,10 @@ install -d -m 755 "$(dirname "$ICON")"
 install -m 644 "$SRC/data/icons/predatorctl.svg" "$ICON"
 
 echo "==> Menu entry: $DESKTOP"
-install -m 644 "$SRC/data/predatorctl.desktop" "$DESKTOP"
+rm -f /usr/share/applications/predatorctl.desktop   # old filename (pre-icon-fix installs); the
+                                                     # app-id/desktop-file basename mismatch was
+                                                     # why the taskbar icon fell back to generic
+install -m 644 "$SRC/data/io.github.rdmsilva.predatorctl.desktop" "$DESKTOP"
 
 echo "==> Polkit rule (auth_admin_keep): $POLKIT"
 install -m 644 "$SRC/data/49-predatorctl.rules" "$POLKIT"
