@@ -26,6 +26,7 @@ FOUR_ZONED_KB = LINUWU_BASE / "four_zoned_kb"
 PLATFORM_PROFILE = Path("/sys/firmware/acpi/platform_profile")
 PROFILE_CHOICES = Path("/sys/firmware/acpi/platform_profile_choices")
 POWER_SUPPLY = Path("/sys/class/power_supply")
+RESTORE_CONF = Path("/etc/predatorctl/restore.conf")
 
 
 def _read_sysfs(path):
@@ -80,6 +81,20 @@ class SensorAdapter:
     def read_platform_profile_choices(self):
         val = _read_sysfs(PROFILE_CHOICES)
         return val.split() if val else []
+
+    def read_last_kb_effect(self):
+        """Last four_zone_mode value predatorctl-helper saved for boot
+        restore, or None. The RGB sysfs node has no read-back (see
+        ui/rgb_page.py), so this file -- world-readable, root-owned -- is
+        the only way to know what's actually configured on the keyboard."""
+        text = _read_sysfs(RESTORE_CONF)
+        if not text:
+            return None
+        for line in text.splitlines():
+            line = line.strip()
+            if line.startswith("four_zone_mode="):
+                return line.partition("=")[2].strip()
+        return None
 
     def _battery_path(self):
         """First 'Battery'-type supply (BAT0 on Nitro, BAT1 on PHN16-72…)."""
@@ -251,4 +266,5 @@ class SensorAdapter:
             platform_profile=self.read_platform_profile(),
             profile_choices=self.read_platform_profile_choices(),
             on_ac=self.read_on_ac(),
+            kb_last_effect=self.read_last_kb_effect(),
         )

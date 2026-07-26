@@ -41,3 +41,4 @@ class Telemetry:
     platform_profile: str = ""
     profile_choices: list[str] = field(default_factory=list)
     on_ac: bool = True   # AC adapter plugged in (Performance/Turbo require AC)
+    kb_last_effect: str | None = None   # raw four_zone_mode last saved for boot restore

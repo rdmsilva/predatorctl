@@ -202,6 +202,7 @@ class PredatorWindow(Adw.ApplicationWindow):
         self.temperatures_page.refresh(data)
         self.fan_page.refresh(data)
         self.profile_page.refresh(data)
+        self.rgb_page.refresh(data)
         self.battery_page.refresh(data)
         self._update_footer(data)
 

@@ -151,6 +151,37 @@ class TestFanSpeed(unittest.TestCase):
         self.assertIsNone(self._fan("1,2,3"))
 
 
+class TestLastKbEffect(unittest.TestCase):
+    def setUp(self):
+        self.ad = SensorAdapter()
+
+    def _kb(self, raw):
+        with mock.patch.object(sysfs_sensors, "_read_sysfs", return_value=raw):
+            return self.ad.read_last_kb_effect()
+
+    def test_extracts_value(self):
+        text = (
+            "# comment\n"
+            "platform_profile=balanced\n"
+            "four_zone_mode=5,3,100,1,128,0,255\n"
+            "battery_limiter=1\n"
+        )
+        self.assertEqual(self._kb(text), "5,3,100,1,128,0,255")
+
+    def test_whitespace_trimmed(self):
+        self.assertEqual(self._kb("  four_zone_mode=1,4,100,1,255,0,0  \n"),
+                          "1,4,100,1,255,0,0")
+
+    def test_no_file(self):
+        self.assertIsNone(self._kb(None))
+
+    def test_no_matching_line(self):
+        self.assertIsNone(self._kb("platform_profile=balanced\nbattery_limiter=1\n"))
+
+    def test_empty_file(self):
+        self.assertIsNone(self._kb(""))
+
+
 class TestBattery(unittest.TestCase):
     def setUp(self):
         self.ad = SensorAdapter()

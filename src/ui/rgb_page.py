@@ -5,6 +5,14 @@ On the PHN16-72 the backlight only lights up via four_zone_mode (animated
 effects); static mode and per_zone_mode don't render. That's why the page is
 built around effect + color + brightness + speed rather than static per-zone
 colors.
+
+This sysfs node has no meaningful read-back (writing R,G,B doesn't reliably
+read back the same values), so the page can't ask the hardware what's
+currently active. Instead, on first load it pre-fills itself from
+Telemetry.kb_last_effect -- the same four_zone_mode string predatorctl-helper
+already mirrors into /etc/predatorctl/restore.conf for boot restore. Without
+this the page always opened on hardcoded defaults (Breathing/speed 4/red)
+regardless of what was actually last set.
 """
 
 from gi.repository import Gtk, Adw, Gdk
@@ -17,6 +25,7 @@ class RgbPage(Adw.Bin):
         super().__init__()
         self.app = app
         self._suppress = False
+        self._synced_once = False
         self._color = "ff0000"   # currently selected color (hex RRGGBB)
         self._build_ui()
 
@@ -156,4 +165,31 @@ class RgbPage(Adw.Bin):
         self.app.show_toast("Keyboard off" if ok else msg)
 
     def refresh(self, data):
-        pass
+        if self._synced_once or not data.kb_last_effect:
+            return
+        self._synced_once = True
+        self._sync_from_last_effect(data.kb_last_effect)
+
+    def _sync_from_last_effect(self, value):
+        """Pre-fills effect/brightness/speed/color from the last value saved
+        for boot restore -- see module docstring for why this is the only
+        source of truth available."""
+        parts = value.split(",")
+        if len(parts) != 7:
+            return
+        try:
+            mode, speed, brightness, _direction, r, g, b = (int(p) for p in parts)
+        except ValueError:
+            return
+        idx = next((i for i, (eid, _) in enumerate(KB_EFFECTS) if eid == mode), None)
+        if idx is None:
+            return  # e.g. mode 0 (off) has no matching row to select
+        self._suppress = True
+        try:
+            self.effect_row.set_selected(idx)
+            self.bright_row.set_value(brightness)
+            self.speed_row.set_value(speed)
+        finally:
+            self._suppress = False
+        self._color = f"{r:02x}{g:02x}{b:02x}"
+        self.hex_entry.set_text(self._color)
