@@ -126,6 +126,31 @@ sudo ./install.sh --after=power-profiles-daemon.service    # ou: sudo make insta
 
 Isso não é o padrão porque também *inicia* essa unit se ela ainda não estiver rodando (necessário pra realmente vencer a corrida, não só ordenar contra ela), e alguns desses daemons têm `Conflicts=` mútuo entre si — o `power-profiles-daemon` conflita com o `tlp`, por exemplo. Puxar um numa máquina que usa o outro pararia ele, um efeito colateral maior e sem relação que o instalador não vai assumir por conta própria. Só passe essa opção se você realmente viu o perfil voltar ao padrão depois do boot.
 
+## Solução de problemas
+
+### Algo mais está sobrescrevendo meu perfil térmico depois do boot
+
+O `power-profiles-daemon` é o culpado conhecido (acima), mas se o perfil ainda voltar ao padrão depois de apontar o `--after` pra ele, outro daemon de gerenciamento de energia (`tlp`, `tuned`, `auto-cpufreq`, `system76-power`, ou algo específico da sua distro) pode estar disputando com você. Pra descobrir qual:
+
+1. **Veja o que está rodando de fato:**
+   ```bash
+   systemctl list-units --type=service --state=running | grep -Ei 'power|tlp|tuned|profile'
+   ```
+2. **Compare os horários** — `journalctl -b -u predatorctl-restore.service` mostra quando a restauração rodou; olhe o log da unit suspeita (`journalctl -b -u <service>`) por algo logo depois.
+3. **Pra uma resposta definitiva**, observe o próprio nó sysfs com o `auditd` — isso registra o processo exato que fez a escrita, não só o que estava rodando na hora:
+   ```bash
+   sudo auditctl -w /sys/firmware/acpi/platform_profile -p w -k predatorctl_profile
+   # reinicie (ou espere a sobrescrita acontecer) e depois:
+   sudo ausearch -k predatorctl_profile -i
+   ```
+   A saída do `ausearch` inclui um campo `comm=` com o nome exato do processo.
+
+Com o nome da unit em mãos, diga ao instalador pra ordenar depois dela:
+
+```bash
+sudo ./install.sh --after=<unit>.service
+```
+
 ## Testes
 
 Não precisa de hardware — parsers, validação e formatos de valores são testados com tudo mockado:

@@ -124,6 +124,31 @@ sudo ./install.sh --after=power-profiles-daemon.service    # or: sudo make insta
 
 This isn't the default because it also *starts* that unit if it isn't already running (needed to actually win the race, not just order against it), and some of these daemons mutually `Conflicts=` each other — `power-profiles-daemon` conflicts with `tlp`, for instance. Pulling one in on a machine using the other would stop it, which is a bigger, unrelated side effect the installer won't take on your behalf. Only pass this if you've actually seen your profile revert after boot.
 
+## Troubleshooting
+
+### Something else is overwriting my thermal profile after boot
+
+`power-profiles-daemon` is the known culprit (above), but if your profile still reverts after pointing `--after` at it, some other power-management daemon (`tlp`, `tuned`, `auto-cpufreq`, `system76-power`, or a distro-specific one) may be racing you instead. To find out which:
+
+1. **See what's actually running:**
+   ```bash
+   systemctl list-units --type=service --state=running | grep -Ei 'power|tlp|tuned|profile'
+   ```
+2. **Compare timing** — `journalctl -b -u predatorctl-restore.service` shows when the restore ran; check the suspect's own log (`journalctl -b -u <service>`) for something shortly after.
+3. **For a definitive answer**, watch the sysfs node itself with `auditd` — this logs the exact process that performed the write, not just what happened to be running:
+   ```bash
+   sudo auditctl -w /sys/firmware/acpi/platform_profile -p w -k predatorctl_profile
+   # reboot (or wait for the overwrite to happen), then:
+   sudo ausearch -k predatorctl_profile -i
+   ```
+   The `ausearch` output includes a `comm=` field with the exact process name.
+
+Once you have the unit name, tell the installer to order after it:
+
+```bash
+sudo ./install.sh --after=<unit>.service
+```
+
 ## Tests
 
 No hardware needed — parsers, validation and value formats are tested with everything mocked:
