@@ -79,6 +79,7 @@ class RgbPage(Adw.Bin):
         custom_group.add(self.hex_entry)
 
         btn_box = Gtk.Box(spacing=12)
+        btn_box.set_margin_top(12)
         apply_btn = Gtk.Button(label="Apply Color")
         apply_btn.add_css_class("suggested-action")
         apply_btn.set_hexpand(True)
